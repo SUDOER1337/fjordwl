@@ -1,5 +1,5 @@
-project('mango', ['c', 'cpp'],
-  version : '0.12.7',
+project('fjordwl', ['c', 'cpp'],
+  version : '0.0.1',
 )
 
 subdir('protocols')
@@ -15,18 +15,12 @@ endif
 prefix = get_option('prefix')
 sysconfdir = get_option('sysconfdir')
 
-# 如果 sysconfdir 以 prefix 开头，去掉 prefix
 if sysconfdir.startswith(prefix) and not is_nixos
   sysconfdir = sysconfdir.substring(prefix.length())
-  # 确保 sysconfdir 是绝对路径
   if not sysconfdir.startswith('/')
     sysconfdir = '/' + sysconfdir
   endif
 endif
-
-# 打印调试信息，确认 sysconfdir 的值
-# message('prefix: ' + prefix)
-# message('sysconfdir: ' + sysconfdir)
 
 cc = meson.get_compiler('c')
 libm = cc.find_library('m')
@@ -41,11 +35,9 @@ pcre2_dep = dependency('libpcre2-8')
 libscenefx_dep = dependency('scenefx-0.4',version: '>=0.4.1')
 
 
-# 获取版本信息
 git = find_program('git', required : false)
 is_git_repo = false
 
-# 检查当前目录是否是 Git 仓库
 if git.found()
   git_status = run_command(git, 'rev-parse', '--is-inside-work-tree', check : false)
   if git_status.returncode() == 0 and git_status.stdout().strip() == 'true'
@@ -54,18 +46,15 @@ if git.found()
 endif
 
 if is_git_repo
-  # 如果是 Git 目录，获取 Commit Hash 和最新的 tag
   commit_hash = run_command(git, 'rev-parse', '--short', 'HEAD', check : false).stdout().strip()
   latest_tag = meson.project_version()
   version_with_hash = '@0@(@1@)'.format(latest_tag, commit_hash)
 else
-  # 如果不是 Git 目录，使用项目版本号和 "release" 字符串
   commit_hash = 'release'
   latest_tag = meson.project_version()
   version_with_hash = '@0@(@1@)'.format(latest_tag, commit_hash)
 endif
 
-# 定义编译参数
 c_args = [
   '-g',
   '-Wno-unused-function',
@@ -75,7 +64,6 @@ c_args = [
   '-DSYSCONFDIR="@0@"'.format('/etc'),
 ]
 
-# 仅在 debug 选项启用时添加调试参数
 if get_option('asan')
   c_args += [
     '-fsanitize=address',
@@ -88,14 +76,13 @@ if xcb.found() and xlibs.found()
   c_args += '-DXWAYLAND'
 endif
 
-# 链接参数（根据 debug 状态添加 ASAN）
 link_args = []
 if get_option('asan')
   link_args += '-fsanitize=address'
 endif
 
-executable('mango',
-  'src/mango.c',
+executable('fjordwl',
+  'src/fjordwl.c',
   'src/common/util.c',
   'src/ext-protocol/wlr_ext_workspace_v1.c',
   wayland_sources,
@@ -131,7 +118,6 @@ wayland_scanner_private_code = generator(
   arguments: ['private-code', '@INPUT@', '@OUTPUT@']
 )
 
-# 在 mmsg 目标中使用生成器
 executable('mmsg',
   'mmsg/mmsg.c',
   wayland_scanner_private_code.process(dwl_ipc_protocol),
@@ -148,6 +134,6 @@ executable('mmsg',
 
 desktop_install_dir = join_paths(prefix, 'share/wayland-sessions')
 portal_install_dir = join_paths(prefix, 'share/xdg-desktop-portal')
-install_data('assets/mango.desktop', install_dir : desktop_install_dir)
-install_data('assets/mango-portals.conf', install_dir : portal_install_dir)
-install_data('assets/config.conf', install_dir : join_paths(sysconfdir, 'mango'))
+install_data('assets/fjordwl.desktop', install_dir : desktop_install_dir)
+install_data('assets/fjordwl-portals.conf', install_dir : portal_install_dir)
+install_data('assets/config.conf', install_dir : join_paths(sysconfdir, 'fjordwl'))

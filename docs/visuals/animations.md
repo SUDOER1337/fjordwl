@@ -5,7 +5,7 @@ description: Configure smooth transitions for windows and layers.
 
 ## Enabling Animations
 
-mangowm supports animations for both standard windows and layer shell surfaces (like bars and notifications).
+fjordwl supports animations for both standard windows and layer shell surfaces (like bars and notifications).
 
 ```ini
 animations=1

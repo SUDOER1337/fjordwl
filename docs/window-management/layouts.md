@@ -5,7 +5,7 @@ description: Configure and switch between different window layouts.
 
 ## Supported Layouts
 
-mangowm supports a variety of layouts that can be assigned per tag.
+fjordwl supports a variety of layouts that can be assigned per tag.
 
 - `tile`
 - `scroller`

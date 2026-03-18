@@ -2,8 +2,8 @@
 /.vscode
 /result
 config.h
-mango
-mango.o
+fjordwl
+fjordwl.o
 util.o
 *-protocol.h
 *-protocol.c

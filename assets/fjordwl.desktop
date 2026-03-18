@@ -1,0 +1,8 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Mango
+DesktopNames=fjordwl;wlroots
+Comment=fjordwl WM
+Exec=fjordwl
+Icon=fjordwl
+Type=Application

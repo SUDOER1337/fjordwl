@@ -1,4 +1,4 @@
-(define-module (mangowm)
+(define-module (fjordwl)
   #:use-module (guix download)
   #:use-module (guix git-download)
   #:use-module (guix gexp)
@@ -18,11 +18,11 @@
   #:use-module (guix licenses))
 
 
-(define-public mangowm-git
+(define-public fjordwl-git
   (package
-    (name "mangowm")
+    (name "fjordwl")
     (version "git")
-    (source (local-file "." "mangowm-checkout"
+    (source (local-file "." "fjordwl-checkout"
                         #:recursive? #t
                         #:select? (or (git-predicate (current-source-directory))
                                       (const #t))))
@@ -55,13 +55,13 @@
                   wlroots
                   scenefx))
     (native-inputs (list pkg-config wayland-protocols))
-    (home-page "https://github.com/DreamMaoMao/mangowm")
+    (home-page "https://github.com/DreamMaoMao/fjordwl")
     (synopsis "Wayland compositor based on wlroots and scenefx")
     (description "A Wayland compositor based on wlroots and scenefx,
 inspired by dwl but aiming to be more feature-rich.")
     (license gpl3)))
 
-(define-deprecated-package mangowc
-  mangowm-git)
+(define-deprecated-package fjordwl
+  fjordwl-git)
 
-mangowm-git
+fjordwl-git

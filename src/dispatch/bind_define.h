@@ -851,7 +851,7 @@ int32_t spawn_shell(const Arg *arg) {
 
 		// if execlp fails, we should not reach here
 		wlr_log(WLR_DEBUG,
-				"mango: failed to execute command '%s' with shell: %s\n",
+				"fjordwl: failed to execute command '%s' with shell: %s\n",
 				arg->v, strerror(errno));
 		_exit(EXIT_FAILURE);
 	}
@@ -891,7 +891,7 @@ int32_t spawn(const Arg *arg) {
 		execvp(argv[0], argv);
 
 		// 4. execvp 失败时：打印错误并直接退出（避免 coredump）
-		wlr_log(WLR_DEBUG, "mango: execvp '%s' failed: %s\n", argv[0],
+		wlr_log(WLR_DEBUG, "fjordwl: execvp '%s' failed: %s\n", argv[0],
 				strerror(errno));
 		_exit(EXIT_FAILURE); // 使用 _exit 避免缓冲区刷新等操作
 	}

@@ -22,7 +22,7 @@ jobs:
       - name: Checkout website
         uses: actions/checkout@v4
         with:
-          repository: mangowm/mangowm.github.io
+          repository: fjordwl/fjordwl.github.io
           path: website
           token: ${{ secrets.WEBSITE_SYNC_TOKEN }}
           fetch-depth: 1
@@ -39,6 +39,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add apps/web/content/docs
           git diff --staged --quiet || git commit \
-            -m "docs: content update from mangowm/mango" \
+            -m "docs: content update from fjordwl/fjordwl" \
             -m "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
           git push

@@ -1,34 +1,34 @@
 ---
 title: Installation
-description: Install mangowm on AerynOS, Arch, Fedora, Gentoo, Guix System, NixOS, PikaOS, or build from source.
+description: Install fjordwl on AerynOS, Arch, Fedora, Gentoo, Guix System, NixOS, PikaOS, or build from source.
 ---
 
 ## Package Installation
 
-mangowm is available as a pre-built package on several distributions. Choose your distribution below.
+fjordwl is available as a pre-built package on several distributions. Choose your distribution below.
 
 ---
 
 ### AerynOS
 
-mangowm is available in the **AerynOS package repository**.
+fjordwl is available in the **AerynOS package repository**.
 
 You can install it using the `moss` package manager:
 
 ```bash
-sudo moss install mangowm
+sudo moss install fjordwl
 ```
 
 ---
 
 ### Arch Linux
 
-mangowm is available in the **Arch User Repository (AUR)**.
+fjordwl is available in the **Arch User Repository (AUR)**.
 
 You can install it using an AUR helper like `yay` or `paru`:
 
 ```bash
-yay -S mangowm-git
+yay -S fjordwl-git
 ```
 
 > **Tip:** This package pulls the latest git version, ensuring you have the newest features and fixes.
@@ -48,7 +48,7 @@ dnf install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$
 Then, install the package:
 
 ```bash
-dnf install mangowm
+dnf install fjordwl
 ```
 
 ---
@@ -67,11 +67,11 @@ The package is hosted in the community-maintained **GURU** repository.
 2. **Unmask packages**
    Add the required packages to your `package.accept_keywords` file:
    - `gui-libs/scenefx`
-   - `gui-wm/mangowm`
+   - `gui-wm/fjordwl`
 
-3. **Install mango**
+3. **Install fjordwl**
    ```bash
-   emerge --ask --verbose gui-wm/mangowm
+   emerge --ask --verbose gui-wm/fjordwl
    ```
 
 ---
@@ -80,28 +80,28 @@ The package is hosted in the community-maintained **GURU** repository.
 
 The package definition is described in the source repository.
 
-1. **Add mango channel**
+1. **Add fjordwl channel**
    Add to `$HOME/.config/guix/channels.scm`:
    ```scheme
    (cons (channel
-           (name 'mangowm)
-           (url "https://github.com/mangowm/mango.git")
+           (name 'fjordwl)
+           (url "https://github.com/fjordwl/fjordwl.git")
            (branch "main"))
          %default-channels)
    ```
 
 2. **Install**
-   After running `guix pull`, you can install mangowm:
+   After running `guix pull`, you can install fjordwl:
    ```bash
-   guix install mangowm
+   guix install fjordwl
    ```
 
-   Or add it to your system configuration using the mangowm module:
+   Or add it to your system configuration using the fjordwl module:
    ```scheme
-   (use-modules (mangowm))
+   (use-modules (fjordwl))
 
    (packages (cons*
-               mangowm-git
+               fjordwl-git
                ... ;; Other packages
                %base-packages))
    ```
@@ -120,8 +120,8 @@ The repository provides a Flake with a NixOS module.
    {
      inputs = {
        nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-       mangowm = {
-         url = "github:mangowm/mango";
+       fjordwl = {
+         url = "github:fjordwl/fjordwl";
          inputs.nixpkgs.follows = "nixpkgs";
        };
        # other inputs ...
@@ -136,7 +136,7 @@ The repository provides a Flake with a NixOS module.
    # configuration.nix (or any other file that you import)
    {inputs, ...}: {
      imports = [
-       inputs.mangowm.nixosModules.mango
+       inputs.fjordwl.nixosModules.fjordwl
        # .. other imports ...
      ];
 
@@ -150,13 +150,13 @@ The repository provides a Flake with a NixOS module.
    {
      # ...
 
-     outputs = { self, nixpkgs, mangowm, ...}@inputs: let
+     outputs = { self, nixpkgs, fjordwl, ...}@inputs: let
        inherit (nixpkgs) lib;
        # ...
      in {
        nixosConfigurations.YourHostName = lib.nixosSystem {
          modules = [
-           mangowm.nixosModules.mango # or inputs.mangowm.nixosModules.mango
+           fjordwl.nixosModules.fjordwl # or inputs.fjordwl.nixosModules.fjordwl
            # other imports ...
          ];
        };
@@ -168,31 +168,31 @@ The repository provides a Flake with a NixOS module.
    ```nix
    # configuration.nix (or any other file that you import)
    {
-     programs.mango.enable = true;
+     programs.fjordwl.enable = true;
    }
    ```
 
 4. **Extra options**
-   - `programs.mango.package` — the mango package to use, allows usage of custom mango drvs
-   - `programs.mango.addLoginEntry` (default: `true`) — adds login entry to the display manager
+   - `programs.fjordwl.package` — the fjordwl package to use, allows usage of custom fjordwl drvs
+   - `programs.fjordwl.addLoginEntry` (default: `true`) — adds login entry to the display manager
 
 ---
 
 ### PikaOS
 
-mangowm is available in the **PikaOS package repository**.
+fjordwl is available in the **PikaOS package repository**.
 
 You can install it using the `pikman` package manager:
 
 ```bash
-pikman install mangowc
+pikman install fjordwl
 ```
 
 ---
 
 ## Building from Source
 
-If your distribution isn't listed above, or you want the latest unreleased changes, you can build mangowm from source.
+If your distribution isn't listed above, or you want the latest unreleased changes, you can build fjordwl from source.
 
 > **Info:** Ensure the following dependencies are installed before proceeding:
 > - `wayland`
@@ -229,11 +229,11 @@ You will need to build `wlroots` and `scenefx` manually as well.
    sudo ninja -C build install
    ```
 
-3. **Build mangowm**
+3. **Build fjordwl**
    Finally, compile the compositor itself.
    ```bash
-   git clone https://github.com/mangowm/mango.git
-   cd mango
+   git clone https://github.com/fjordwl/fjordwl.git
+   cd fjordwl
    meson build -Dprefix=/usr
    sudo ninja -C build install
    ```
