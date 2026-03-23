@@ -836,7 +836,6 @@ int32_t spawn_shell(const Arg *arg) {
 		return 0;
 
 	if (fork() == 0) {
-		// 1. 忽略可能导致 coredump 的信号
 		signal(SIGSEGV, SIG_IGN);
 		signal(SIGABRT, SIG_IGN);
 		signal(SIGILL, SIG_IGN);
@@ -864,7 +863,6 @@ int32_t spawn(const Arg *arg) {
 		return 0;
 
 	if (fork() == 0) {
-		// 1. 忽略可能导致 coredump 的信号
 		signal(SIGSEGV, SIG_IGN);
 		signal(SIGABRT, SIG_IGN);
 		signal(SIGILL, SIG_IGN);
@@ -872,7 +870,6 @@ int32_t spawn(const Arg *arg) {
 		dup2(STDERR_FILENO, STDOUT_FILENO);
 		setsid();
 
-		// 2. 解析参数
 		char *argv[64];
 		int32_t argc = 0;
 		char *token = strtok((char *)arg->v, " ");
@@ -887,13 +884,10 @@ int32_t spawn(const Arg *arg) {
 		}
 		argv[argc] = NULL;
 
-		// 3. 执行命令
 		execvp(argv[0], argv);
 
-		// 4. execvp 失败时：打印错误并直接退出（避免 coredump）
 		wlr_log(WLR_DEBUG, "fjordwl: execvp '%s' failed: %s\n", argv[0],
 				strerror(errno));
-		_exit(EXIT_FAILURE); // 使用 _exit 避免缓冲区刷新等操作
 	}
 	return 0;
 }
@@ -930,7 +924,6 @@ int32_t switch_keyboard_layout(const Arg *arg) {
 		return 0;
 	}
 
-	// 1. 获取当前布局和计算下一个布局
 	xkb_layout_index_t current = xkb_state_serialize_layout(
 		keyboard->xkb_state, XKB_STATE_LAYOUT_EFFECTIVE);
 	const int32_t num_layouts = xkb_keymap_num_layouts(keyboard->keymap);
@@ -946,14 +939,12 @@ int32_t switch_keyboard_layout(const Arg *arg) {
 		next = (current + 1) % num_layouts;
 	}
 
-	// 6. 应用新 keymap
 	uint32_t depressed = keyboard->modifiers.depressed;
 	uint32_t latched = keyboard->modifiers.latched;
 	uint32_t locked = keyboard->modifiers.locked;
 
 	wlr_keyboard_notify_modifiers(keyboard, depressed, latched, locked, next);
 
-	// 7. 更新 seat
 	wlr_seat_set_keyboard(seat, keyboard);
 	wlr_seat_keyboard_notify_modifiers(seat, &keyboard->modifiers);
 
@@ -966,7 +957,6 @@ int32_t switch_keyboard_layout(const Arg *arg) {
 		struct wlr_keyboard *tkb = (struct wlr_keyboard *)id->device_data;
 
 		wlr_keyboard_notify_modifiers(tkb, depressed, latched, locked, next);
-		// 7. 更新 seat
 		wlr_seat_set_keyboard(seat, tkb);
 		wlr_seat_keyboard_notify_modifiers(seat, &tkb->modifiers);
 	}
@@ -1155,8 +1145,6 @@ int32_t tagmon(const Arg *arg) {
 	selmon = c->mon;
 	c->float_geom = setclient_coordinate_center(c, c->mon, c->float_geom, 0, 0);
 
-	// 重新计算居中的坐标
-	// 重新计算居中的坐标
 	if (c->isfloating) {
 		c->geom = c->float_geom;
 		target = get_tags_first_tag(c->tags);
@@ -1699,8 +1687,6 @@ int32_t toggleoverview(const Arg *arg) {
 		return 0;
 	}
 
-	// 正常视图到overview,退出所有窗口的浮动和全屏状态参与平铺,
-	// overview到正常视图,还原之前退出的浮动和全屏窗口状态
 	if (selmon->isoverview) {
 		wl_list_for_each(c, &clients, link) {
 			if (c && c->mon == selmon && !client_is_unmanaged(c) &&

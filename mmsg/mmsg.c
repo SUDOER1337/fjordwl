@@ -150,7 +150,6 @@ static void dwl_ipc_output_tag(void *data,
 	if (clients > 0)
 		occ |= 1 << tag;
 
-	// 累计所有 tag 的 clients 总数
 	total_clients += clients;
 
 	if (!(mode & GET))

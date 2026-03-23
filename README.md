@@ -1,12 +1,5 @@
 # fjordwl
 
-Fjordwl is a personal Arch-optimized fork of the Mango Wayland Compositor. This project aims to provide a streamlined and efficient Wayland experience tailored specifically for Arch Linux users.
+fjordwl is a personal lightweight fork of the Mango Wayland Compositor. This project aims to provide a streamlined and efficient Wayland experience for myself
 
-## Features
-- Lightweight and fast performance
-- Easy installation and configuration
-- Optimized for Arch Linux best practices
-
-For installation instructions, please refer to the official Arch Linux documentation or the Arch Wiki.
-
-Contributions and suggestions are welcome!
+this mainly exist because i dont wanna start with pure dwl as base!

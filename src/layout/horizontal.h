@@ -1,4 +1,3 @@
-// 网格布局窗口大小和位置计算
 void grid(Monitor *m) {
 	int32_t i, n;
 	int32_t cx, cy, cw, ch;
@@ -16,7 +15,7 @@ void grid(Monitor *m) {
 	n = m->isoverview ? m->visible_clients : m->visible_tiling_clients;
 
 	if (n == 0) {
-		return; // 没有需要处理的客户端，直接返回
+		return;
 	}
 
 	if (n == 1) {
@@ -68,7 +67,6 @@ void grid(Monitor *m) {
 		return;
 	}
 
-	// 计算列数和行数
 	for (cols = 0; cols <= n / 2; cols++) {
 		if (cols * cols >= n) {
 			break;
@@ -76,18 +74,15 @@ void grid(Monitor *m) {
 	}
 	rows = (cols && (cols - 1) * cols >= n) ? cols - 1 : cols;
 
-	// 计算每个客户端的高度和宽度
 	ch = (m->w.height - 2 * target_gappo - (rows - 1) * target_gappi) / rows;
 	cw = (m->w.width - 2 * target_gappo - (cols - 1) * target_gappi) / cols;
 
-	// 处理多余的列
 	overcols = n % cols;
 	if (overcols) {
 		dx = (m->w.width - overcols * cw - (overcols - 1) * target_gappi) / 2 -
 			 target_gappo;
 	}
 
-	// 调整每个客户端的位置和大小
 	i = 0;
 	wl_list_for_each(c, &clients, link) {
 
@@ -141,11 +136,9 @@ void deck(Monitor *m) {
 			break;
 	}
 
-	// Calculate master width using mfact from pertag
 	mfact = fc->master_mfact_per > 0.0f ? fc->master_mfact_per
 										: m->pertag->mfacts[m->pertag->curtag];
 
-	// Calculate master width including outer gaps
 	if (n > nmasters)
 		mw = nmasters ? round((m->w.width - 2 * cur_gappoh) * mfact) : 0;
 	else
@@ -157,7 +150,6 @@ void deck(Monitor *m) {
 			continue;
 		if (i < nmasters) {
 			c->master_mfact_per = mfact;
-			// Master area clients
 			resize(
 				c,
 				(struct wlr_box){.x = m->w.x + cur_gappoh,
@@ -168,7 +160,6 @@ void deck(Monitor *m) {
 				0);
 			my += c->geom.height;
 		} else {
-			// Stack area clients
 			c->master_mfact_per = mfact;
 			resize(c,
 				   (struct wlr_box){.x = m->w.x + mw + cur_gappoh + cur_gappih,
@@ -279,13 +270,12 @@ void horizontal_check_scroller_root_inside_mon(Client *c,
 	}
 }
 
-// 滚动布局
 void scroller(Monitor *m) {
 	int32_t i, n, j;
 	float single_proportion = 1.0;
 
 	Client *c = NULL, *root_client = NULL;
-	Client **tempClients = NULL; // 初始化为 NULL
+	Client **tempClients = NULL;
 	struct wlr_box target_geom;
 	int32_t focus_client_index = 0;
 	bool need_scroller = false;
@@ -311,17 +301,14 @@ void scroller(Monitor *m) {
 	n = m->visible_scroll_tiling_clients;
 
 	if (n == 0) {
-		return; // 没有需要处理的客户端，直接返回
-	}
-
-	// 动态分配内存
-	tempClients = malloc(n * sizeof(Client *));
-	if (!tempClients) {
-		// 处理内存分配失败的情况
 		return;
 	}
 
-	// 第二次遍历，填充 tempClients
+	tempClients = malloc(n * sizeof(Client *));
+	if (!tempClients) {
+		return;
+	}
+
 	j = 0;
 	wl_list_for_each(c, &clients, link) {
 		if (VISIBLEON(c, m) && ISSCROLLTILED(c) && !c->prev_in_stack) {
@@ -344,7 +331,7 @@ void scroller(Monitor *m) {
 		target_geom.y = m->w.y + (m->w.height - target_geom.height) / 2;
 		horizontal_check_scroller_root_inside_mon(c, &target_geom);
 		arrange_stack(c, target_geom, cur_gappiv);
-		free(tempClients); // 释放内存
+		free(tempClients);
 		return;
 	}
 
@@ -357,13 +344,12 @@ void scroller(Monitor *m) {
 		root_client = center_tiled_select(m);
 	}
 
-	// root_client might be in a stack, find the stack head
 	if (root_client) {
 		root_client = get_scroll_stack_head(root_client);
 	}
 
 	if (!root_client) {
-		free(tempClients); // 释放内存
+		free(tempClients);
 		return;
 	}
 
@@ -500,7 +486,7 @@ void scroller(Monitor *m) {
 		arrange_stack(c, target_geom, cur_gappiv);
 	}
 
-	free(tempClients); // 最后释放内存
+	free(tempClients);
 }
 
 void center_tile(Monitor *m) {
@@ -520,19 +506,16 @@ void center_tile(Monitor *m) {
 	if (n == 0)
 		return;
 
-	// 获取第一个可见的平铺客户端用于主区域宽度百分比
 	wl_list_for_each(fc, &clients, link) {
 		if (VISIBLEON(fc, m) && ISTILED(fc))
 			break;
 	}
 
-	// 间隙参数处理
-	int32_t cur_gappiv = enablegaps ? m->gappiv : 0; // 内部垂直间隙
-	int32_t cur_gappih = enablegaps ? m->gappih : 0; // 内部水平间隙
-	int32_t cur_gappov = enablegaps ? m->gappov : 0; // 外部垂直间隙
-	int32_t cur_gappoh = enablegaps ? m->gappoh : 0; // 外部水平间隙
+	int32_t cur_gappiv = enablegaps ? m->gappiv : 0;
+	int32_t cur_gappih = enablegaps ? m->gappih : 0;
+	int32_t cur_gappov = enablegaps ? m->gappov : 0;
+	int32_t cur_gappoh = enablegaps ? m->gappoh : 0;
 
-	// 智能间隙处理
 	cur_gappiv =
 		config.smartgaps && m->visible_tiling_clients == 1 ? 0 : cur_gappiv;
 	cur_gappih =
@@ -546,13 +529,11 @@ void center_tile(Monitor *m) {
 	mfact = fc->master_mfact_per > 0.0f ? fc->master_mfact_per
 										: m->pertag->mfacts[m->pertag->curtag];
 
-	// 初始化区域
 	mw = m->w.width;
 	mx = cur_gappoh;
 	my = cur_gappov;
 	tw = mw;
 
-	// 判断是否需要主区域铺满
 	int32_t should_overspread =
 		config.center_master_overspread && (n <= nmasters);
 
@@ -570,35 +551,28 @@ void center_tile(Monitor *m) {
 	float slave_right_surplus_ratio = 1.0;
 
 	if (n > nmasters || !should_overspread) {
-		// 计算主区域宽度（居中模式）
 		mw = nmasters ? (m->w.width - 2 * cur_gappoh - cur_gappih * ie) * mfact
 					  : 0;
 
 		if (n - nmasters > 1) {
-			// 多个堆叠窗口：主区域居中，左右两侧各有一个堆叠区域
 			tw = (m->w.width - mw) / 2 - cur_gappoh - cur_gappih * ie;
 			mx = cur_gappoh + tw + cur_gappih * ie;
 		} else if (n - nmasters == 1) {
-			// 单个堆叠窗口的处理
 			if (config.center_when_single_stack) {
-				// stack在右边，master居中，左边空着
 				tw = (m->w.width - mw) / 2 - cur_gappoh - cur_gappih * ie;
-				mx = cur_gappoh + tw + cur_gappih * ie; // master居中
+				mx = cur_gappoh + tw + cur_gappih * ie;
 			} else {
-				// stack在右边，master在左边
 				tw = m->w.width - mw - 2 * cur_gappoh - cur_gappih * ie;
-				mx = cur_gappoh; // master在左边
+				mx = cur_gappoh;
 			}
 		} else {
-			// 只有主区域窗口：居中显示
 			tw = (m->w.width - mw) / 2 - cur_gappoh - cur_gappih * ie;
 			mx = cur_gappoh + tw + cur_gappih * ie;
 		}
 	} else {
-		// 主区域铺满模式（只有主区域窗口时）
 		mw = m->w.width - 2 * cur_gappoh;
 		mx = cur_gappoh;
-		tw = 0; // 堆叠区域宽度为0
+		tw = 0;
 	}
 
 	oty = cur_gappov;
@@ -610,7 +584,6 @@ void center_tile(Monitor *m) {
 			continue;
 
 		if (i < nmasters) {
-			// 主区域窗口
 			r = MIN(n, nmasters) - i;
 			if (c->master_inner_per > 0.0f) {
 				h = master_surplus_height * c->master_inner_per /
@@ -636,11 +609,9 @@ void center_tile(Monitor *m) {
 				   0);
 			my += c->geom.height + cur_gappiv * ie;
 		} else {
-			// 堆叠区域窗口
 			int32_t stack_index = i - nmasters;
 
 			if (n - nmasters == 1) {
-				// 单个堆叠窗口
 				r = n - i;
 				if (c->stack_inner_per > 0.0f) {
 					h = (m->w.height - 2 * cur_gappov -
@@ -658,10 +629,8 @@ void center_tile(Monitor *m) {
 
 				int32_t stack_x;
 				if (config.center_when_single_stack) {
-					// 放在右侧（master居中时，stack在右边）
 					stack_x = m->w.x + mx + mw + cur_gappih * ie;
 				} else {
-					// 放在右侧（master在左边时，stack在右边）
 					stack_x = m->w.x + mx + mw + cur_gappih * ie;
 				}
 
@@ -673,11 +642,9 @@ void center_tile(Monitor *m) {
 					   0);
 				ety += c->geom.height + cur_gappiv * ie;
 			} else {
-				// 多个堆叠窗口：交替放在左右两侧
 				r = (n - i + 1) / 2;
 
 				if ((stack_index % 2) ^ (n % 2 == 0)) {
-					// 右侧堆叠窗口
 					if (c->stack_inner_per > 0.0f) {
 						h = slave_right_surplus_height * c->stack_inner_per /
 							slave_right_surplus_ratio;
@@ -706,7 +673,6 @@ void center_tile(Monitor *m) {
 						   0);
 					ety += c->geom.height + cur_gappiv * ie;
 				} else {
-					// 左侧堆叠窗口
 					if (c->stack_inner_per > 0.0f) {
 						h = slave_left_surplus_height * c->stack_inner_per /
 							slave_left_surplus_ratio;
@@ -840,8 +806,6 @@ void tile(Monitor *m) {
 				c->master_mfact_per = mfact;
 			}
 
-			// wlr_log(WLR_ERROR, "stack_inner_per: %f", c->stack_inner_per);
-
 			resize(c,
 				   (struct wlr_box){.x = m->w.x + mw + cur_gappoh,
 									.y = m->w.y + ty,
@@ -955,8 +919,6 @@ void right_tile(Monitor *m) {
 				c->master_mfact_per = mfact;
 			}
 
-			// wlr_log(WLR_ERROR, "stack_inner_per: %f", c->stack_inner_per);
-
 			resize(c,
 				   (struct wlr_box){.x = m->w.x + cur_gappoh,
 									.y = m->w.y + ty,
@@ -969,8 +931,7 @@ void right_tile(Monitor *m) {
 	}
 }
 
-void // 17
-monocle(Monitor *m) {
+void monocle(Monitor *m) {
 	Client *c = NULL;
 	struct wlr_box geom;
 

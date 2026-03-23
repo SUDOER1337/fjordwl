@@ -50,7 +50,6 @@ void get_layer_target_geometry(LayerSurface *l, struct wlr_box *target_box) {
 		box.x = bounds.x + ((bounds.width - box.width) / 2);
 	}
 
-	// 垂直方向定位
 	const int32_t both_vert =
 		ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
 	if (box.height == 0) {

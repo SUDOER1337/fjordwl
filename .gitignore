@@ -1,6 +1,7 @@
 /.cache
 /.vscode
 /result
+/recovered-matches
 config.h
 fjordwl
 fjordwl.o
