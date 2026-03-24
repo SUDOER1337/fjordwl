@@ -631,12 +631,15 @@ static int32_t keyrepeat(void *data);
 static void inputdevice(struct wl_listener *listener, void *data);
 static int32_t keybinding(uint32_t state, bool locked, uint32_t mods,
 						  xkb_keysym_t sym, uint32_t keycode);
+static bool keybinding_matches_keysymcode(const KeySymCode *keysymcode,
+										  xkb_keysym_t sym, uint32_t keycode);
 static void keypress(struct wl_listener *listener, void *data);
 static void keypressmod(struct wl_listener *listener, void *data);
 static bool keypressglobal(struct wlr_surface *last_surface,
 						   struct wlr_keyboard *keyboard,
 						   struct wlr_keyboard_key_event *event, uint32_t mods,
 						   xkb_keysym_t keysym, uint32_t keycode);
+static void normalize_keysym_bindings_for_keymap(struct xkb_keymap *keymap);
 static void locksession(struct wl_listener *listener, void *data);
 static void mapnotify(struct wl_listener *listener, void *data);
 static void maximizenotify(struct wl_listener *listener, void *data);
@@ -2724,6 +2727,81 @@ void createkeyboard(struct wlr_keyboard *keyboard) {
 	wlr_keyboard_group_add_keyboard(kb_group->wlr_group, keyboard);
 }
 
+static void remember_binding_keycode(KeySymCode *keysymcode, uint32_t keycode) {
+	if (!keysymcode || !keycode)
+		return;
+
+	if (keysymcode->keycode.keycode1 == keycode ||
+		keysymcode->keycode.keycode2 == keycode ||
+		keysymcode->keycode.keycode3 == keycode)
+		return;
+
+	if (!keysymcode->keycode.keycode1)
+		keysymcode->keycode.keycode1 = keycode;
+	else if (!keysymcode->keycode.keycode2)
+		keysymcode->keycode.keycode2 = keycode;
+	else if (!keysymcode->keycode.keycode3)
+		keysymcode->keycode.keycode3 = keycode;
+}
+
+static void normalize_keysymcode_for_keymap(struct xkb_keymap *keymap,
+											KeySymCode *keysymcode) {
+	if (!keymap || !keysymcode || keysymcode->type != KEY_TYPE_SYM ||
+		keysymcode->keysym == XKB_KEY_NoSymbol)
+		return;
+
+	keysymcode->keycode = (MultiKeycode){0};
+
+	for (xkb_keycode_t keycode = xkb_keymap_min_keycode(keymap);
+		 keycode <= xkb_keymap_max_keycode(keymap); keycode++) {
+		xkb_layout_index_t layout_count =
+			xkb_keymap_num_layouts_for_key(keymap, keycode);
+		bool matched_keycode = false;
+
+		for (xkb_layout_index_t layout = 0;
+			 !matched_keycode && layout < layout_count; layout++) {
+			xkb_level_index_t level_count =
+				xkb_keymap_num_levels_for_key(keymap, keycode, layout);
+
+			for (xkb_level_index_t level = 0;
+				 !matched_keycode && level < level_count; level++) {
+				const xkb_keysym_t *syms = NULL;
+				int32_t sym_count = xkb_keymap_key_get_syms_by_level(
+					keymap, keycode, layout, level, &syms);
+
+				for (int32_t i = 0; i < sym_count; i++) {
+					if (xkb_keysym_to_lower(syms[i]) !=
+						xkb_keysym_to_lower(keysymcode->keysym))
+						continue;
+
+					remember_binding_keycode(keysymcode, keycode);
+					matched_keycode = true;
+					break;
+				}
+			}
+		}
+
+		if (keysymcode->keycode.keycode1 && keysymcode->keycode.keycode2 &&
+			keysymcode->keycode.keycode3)
+			return;
+	}
+}
+
+static void normalize_keysym_bindings_for_keymap(struct xkb_keymap *keymap) {
+	int32_t i;
+
+	if (!keymap)
+		return;
+
+	for (i = 0; i < config.key_bindings_count; i++)
+		normalize_keysymcode_for_keymap(keymap, &config.key_bindings[i].keysymcode);
+
+	for (i = 0; i < config.window_rules_count; i++) {
+		normalize_keysymcode_for_keymap(
+			keymap, &config.window_rules[i].globalkeybinding.keysymcode);
+	}
+}
+
 KeyboardGroup *createkeyboardgroup(void) {
 	KeyboardGroup *group = ecalloc(1, sizeof(*group));
 	struct xkb_context *context;
@@ -2737,6 +2815,7 @@ KeyboardGroup *createkeyboardgroup(void) {
 											 XKB_KEYMAP_COMPILE_NO_FLAGS)))
 		die("failed to compile keymap");
 
+	normalize_keysym_bindings_for_keymap(keymap);
 	wlr_keyboard_set_keymap(&group->wlr_group->keyboard, keymap);
 
 	if (config.numlockon) {
@@ -3729,6 +3808,28 @@ bool is_keyboard_shortcut_inhibitor(struct wlr_surface *surface) {
 	return false;
 }
 
+bool
+keybinding_matches_keysymcode(const KeySymCode *keysymcode, xkb_keysym_t sym,
+							  uint32_t keycode) {
+	bool has_keycodes;
+
+	if (!keysymcode)
+		return false;
+
+	has_keycodes = keysymcode->type == KEY_TYPE_CODE ||
+				   keysymcode->keycode.keycode1 || keysymcode->keycode.keycode2 ||
+				   keysymcode->keycode.keycode3;
+
+	if (has_keycodes) {
+		return keycode == keysymcode->keycode.keycode1 ||
+			   keycode == keysymcode->keycode.keycode2 ||
+			   keycode == keysymcode->keycode.keycode3;
+	}
+
+	return keysymcode->type == KEY_TYPE_SYM &&
+		   xkb_keysym_to_lower(sym) == xkb_keysym_to_lower(keysymcode->keysym);
+}
+
 int32_t // 17
 keybinding(uint32_t state, bool locked, uint32_t mods, xkb_keysym_t sym,
 		   uint32_t keycode) {
@@ -3769,13 +3870,7 @@ keybinding(uint32_t state, bool locked, uint32_t mods, xkb_keysym_t sym,
 		if ((k->iscommonmode || (k->isdefaultmode && keymode.isdefault) ||
 			 (strcmp(keymode.mode, k->mode) == 0)) &&
 			CLEANMASK(mods) == CLEANMASK(k->mod) &&
-			((k->keysymcode.type == KEY_TYPE_SYM &&
-			  xkb_keysym_to_lower(sym) ==
-				  xkb_keysym_to_lower(k->keysymcode.keysym)) ||
-			 (k->keysymcode.type == KEY_TYPE_CODE &&
-			  (keycode == k->keysymcode.keycode.keycode1 ||
-			   keycode == k->keysymcode.keycode.keycode2 ||
-			   keycode == k->keysymcode.keycode.keycode3))) &&
+			keybinding_matches_keysymcode(&k->keysymcode, sym, keycode) &&
 			k->func) {
 
 			if (!k->ispassapply)
@@ -3816,13 +3911,9 @@ bool keypressglobal(struct wlr_surface *last_surface,
 			 !r->globalkeybinding.keysymcode.keycode.keycode3))
 			continue;
 
-		/* match key only (case insensitive) ignoring mods */
-		if (((r->globalkeybinding.keysymcode.type == KEY_TYPE_SYM &&
-			  r->globalkeybinding.keysymcode.keysym == keysym) ||
-			 (r->globalkeybinding.keysymcode.type == KEY_TYPE_CODE &&
-			  (r->globalkeybinding.keysymcode.keycode.keycode1 == keycode ||
-			   r->globalkeybinding.keysymcode.keycode.keycode2 == keycode ||
-			   r->globalkeybinding.keysymcode.keycode.keycode3 == keycode))) &&
+		/* Match key using the normalized keycode mapping when available. */
+		if (keybinding_matches_keysymcode(&r->globalkeybinding.keysymcode,
+										  keysym, keycode) &&
 			r->globalkeybinding.mod == mods) {
 			wl_list_for_each(c, &clients, link) {
 				if (c && c != lastc) {
@@ -3834,9 +3925,8 @@ bool keypressglobal(struct wlr_surface *last_surface,
 						(r->id && regex_match(r->id, appid) && r->title &&
 						 regex_match(r->title, title))) {
 						reset = true;
-						wlr_seat_keyboard_enter(seat, client_surface(c),
-												keycodes, 0,
-												&keyboard->modifiers);
+						wlr_seat_keyboard_enter(seat, client_surface(c), keycodes,
+												0, &keyboard->modifiers);
 						wlr_seat_keyboard_send_key(seat, event->time_msec,
 												   event->keycode,
 												   event->state);
@@ -5332,6 +5422,8 @@ void reset_keyboard_layout(void) {
 				current);
 		current = 0;
 	}
+
+	normalize_keysym_bindings_for_keymap(new_keymap);
 
 	// Apply the new keymap
 	uint32_t depressed = keyboard->modifiers.depressed;
