@@ -164,6 +164,7 @@ typedef struct {
 	float mfact;
 	int32_t nmaster;
 	int32_t no_render_border;
+	int32_t open_as_floating;
 	int32_t no_hide;
 } ConfigTagRule;
 
@@ -1196,6 +1197,8 @@ FuncType parse_func_name(char *func_name, Arg *arg, char *arg_value,
 	} else if (strcmp(func_name, "scroller_stack") == 0) {
 		func = scroller_stack;
 		(*arg).i = parse_direction(arg_value);
+	} else if (strcmp(func_name, "toggle_all_floating") == 0) {
+		func = toggle_all_floating;
 	} else {
 		return NULL;
 	}
@@ -1899,6 +1902,7 @@ bool parse_option(Config *config, char *key, char *value) {
 		rule->nmaster = 0;
 		rule->mfact = 0.0f;
 		rule->no_render_border = 0;
+		rule->open_as_floating = 0;
 		rule->no_hide = 0;
 
 		bool parse_error = false;
@@ -1927,6 +1931,8 @@ bool parse_option(Config *config, char *key, char *value) {
 					rule->monitor_serial = strdup(val);
 				} else if (strcmp(key, "no_render_border") == 0) {
 					rule->no_render_border = CLAMP_INT(atoi(val), 0, 1);
+				} else if (strcmp(key, "open_as_floating") == 0) {
+					rule->open_as_floating = CLAMP_INT(atoi(val), 0, 1);
 				} else if (strcmp(key, "no_hide") == 0) {
 					rule->no_hide = CLAMP_INT(atoi(val), 0, 1);
 				} else if (strcmp(key, "nmaster") == 0) {
@@ -3061,7 +3067,6 @@ void free_config(void) {
 		config.exec_count = 0;
 	}
 
-	_once
 	if (config.exec_once) {
 		for (i = 0; i < config.exec_once_count; i++) {
 			free(config.exec_once[i]);
@@ -3780,6 +3785,8 @@ void parse_tagrule(Monitor *m) {
 				m->pertag->mfacts[tr.id] = tr.mfact;
 			if (tr.no_render_border >= 0)
 				m->pertag->no_render_border[tr.id] = tr.no_render_border;
+			if (tr.open_as_floating >= 0)
+				m->pertag->open_as_floating[tr.id] = tr.open_as_floating;
 		}
 	}
 

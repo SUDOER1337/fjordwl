@@ -150,7 +150,6 @@ void resize_tile_master_horizontal(Client *grabc, bool isdrag, int32_t offsetx,
 			continue;
 		}
 	}
-
 	if (!start_drag_window && isdrag) {
 		drag_begin_cursorx = cursor->x;
 		drag_begin_cursory = cursor->y;
@@ -301,11 +300,11 @@ void resize_tile_master_horizontal(Client *grabc, bool isdrag, int32_t offsetx,
 			return;
 		}
 
-		if (last_apply_drap_time == 0 ||
-			time - last_apply_drap_time > config.drag_tile_refresh_interval) {
-			arrange(grabc->mon, false, false);
-			last_apply_drap_time = time;
-		}
+			if (last_apply_drap_time == 0 ||
+				time - last_apply_drap_time > config.drag_tile_refresh_interval) {
+				arrange(grabc->mon, false, false);
+				last_apply_drap_time = time;
+			}
 	}
 }
 
@@ -326,15 +325,6 @@ void resize_tile_master_vertical(Client *grabc, bool isdrag, int32_t offsetx,
 		}
 	}
 
-	for (node = grabc->link.next; node != &clients; node = node->next) {
-		tc = wl_container_of(node, tc, link);
-
-		if (VISIBLEON(tc, grabc->mon) && ISTILED(tc)) {
-			next = tc;
-			break;
-		}
-	}
-
 	for (node = grabc->link.prev; node != &clients; node = node->prev) {
 		tc = wl_container_of(node, tc, link);
 
@@ -343,133 +333,132 @@ void resize_tile_master_vertical(Client *grabc, bool isdrag, int32_t offsetx,
 			break;
 		}
 	}
-}
 
-if (!start_drag_window && isdrag) {
-	drag_begin_cursorx = cursor->x;
-	drag_begin_cursory = cursor->y;
-	start_drag_window = true;
+	if (!start_drag_window && isdrag) {
+		drag_begin_cursorx = cursor->x;
+		drag_begin_cursory = cursor->y;
+		start_drag_window = true;
 
-	grabc->old_master_mfact_per = grabc->master_mfact_per;
-	grabc->old_master_inner_per = grabc->master_inner_per;
-	grabc->old_stack_inner_per = grabc->stack_inner_per;
-	grabc->cursor_in_upper_half =
-		cursor->y < grabc->geom.y + grabc->geom.height / 2;
-	grabc->cursor_in_left_half =
-		cursor->x < grabc->geom.x + grabc->geom.width / 2;
-	grabc->drag_begin_geom = grabc->geom;
-} else {
-	if (isdrag) {
-
-		offsetx = cursor->x - drag_begin_cursorx;
-		offsety = cursor->y - drag_begin_cursory;
-	} else {
 		grabc->old_master_mfact_per = grabc->master_mfact_per;
 		grabc->old_master_inner_per = grabc->master_inner_per;
 		grabc->old_stack_inner_per = grabc->stack_inner_per;
+		grabc->cursor_in_upper_half =
+			cursor->y < grabc->geom.y + grabc->geom.height / 2;
+		grabc->cursor_in_left_half =
+			cursor->x < grabc->geom.x + grabc->geom.width / 2;
 		grabc->drag_begin_geom = grabc->geom;
-		grabc->cursor_in_upper_half = true;
-		grabc->cursor_in_left_half = false;
-	}
-
-	if (grabc->ismaster) {
-		delta_x = (float)(offsetx) * (grabc->old_master_inner_per) /
-				  grabc->drag_begin_geom.width;
-		delta_y = (float)(offsety) * (grabc->old_master_mfact_per) /
-				  grabc->drag_begin_geom.height;
 	} else {
-		delta_x = (float)(offsetx) * (grabc->old_stack_inner_per) /
-				  grabc->drag_begin_geom.width;
-		delta_y = (float)(offsety) * (1 - grabc->old_master_mfact_per) /
-				  grabc->drag_begin_geom.height;
-	}
+		if (isdrag) {
 
-	bool moving_left;
-	bool moving_right;
-
-	if (!isdrag) {
-		moving_left = offsetx < 0 ? true : false;
-		moving_right = offsetx > 0 ? true : false;
-	} else {
-		moving_left = cursor->x < drag_begin_cursorx;
-		moving_right = cursor->x > drag_begin_cursorx;
-	}
-
-	if (grabc->ismaster && !prev) {
-		if (moving_left) {
-			delta_x = -fabsf(delta_x);
+			offsetx = cursor->x - drag_begin_cursorx;
+			offsety = cursor->y - drag_begin_cursory;
 		} else {
-			delta_x = fabsf(delta_x);
+			grabc->old_master_mfact_per = grabc->master_mfact_per;
+			grabc->old_master_inner_per = grabc->master_inner_per;
+			grabc->old_stack_inner_per = grabc->stack_inner_per;
+			grabc->drag_begin_geom = grabc->geom;
+			grabc->cursor_in_upper_half = true;
+			grabc->cursor_in_left_half = false;
 		}
-	} else if (grabc->ismaster && next && !next->ismaster) {
-		if (moving_left) {
-			delta_x = fabsf(delta_x);
-		} else {
-			delta_x = -fabsf(delta_x);
-		}
-	} else if (!grabc->ismaster && prev && prev->ismaster) {
-		if (moving_left) {
-			delta_x = -fabsf(delta_x);
-		} else {
-			delta_x = fabsf(delta_x);
-		}
-	} else if (!grabc->ismaster && !next) {
-		if (moving_left) {
-			delta_x = fabsf(delta_x);
-		} else {
-			delta_x = -fabsf(delta_x);
-		}
-	} else if ((grabc->cursor_in_left_half && moving_left) ||
-			   (!grabc->cursor_in_left_half && moving_right)) {
-		delta_x = fabsf(delta_x);
-		delta_x = delta_x * 2;
-	} else {
-		delta_x = -fabsf(delta_x);
-		delta_x = delta_x * 2;
-	}
 
-	float new_master_mfact_per = grabc->old_master_mfact_per + delta_y;
-	float new_master_inner_per = grabc->old_master_inner_per + delta_x;
-	float new_stack_inner_per = grabc->old_stack_inner_per + delta_x;
+		if (grabc->ismaster) {
+			delta_x = (float)(offsetx) * (grabc->old_master_inner_per) /
+					  grabc->drag_begin_geom.width;
+			delta_y = (float)(offsety) * (grabc->old_master_mfact_per) /
+					  grabc->drag_begin_geom.height;
+		} else {
+			delta_x = (float)(offsetx) * (grabc->old_stack_inner_per) /
+					  grabc->drag_begin_geom.width;
+			delta_y = (float)(offsety) * (1 - grabc->old_master_mfact_per) /
+					  grabc->drag_begin_geom.height;
+		}
 
-	new_master_mfact_per = fmaxf(0.1f, fminf(0.9f, new_master_mfact_per));
-	new_master_inner_per = fmaxf(0.1f, fminf(0.9f, new_master_inner_per));
-	new_stack_inner_per = fmaxf(0.1f, fminf(0.9f, new_stack_inner_per));
+		bool moving_left;
+		bool moving_right;
 
-	wl_list_for_each(tc, &clients, link) {
-		if (VISIBLEON(tc, grabc->mon) && ISTILED(tc)) {
-			if (!isdrag && tc != grabc && type != CENTER_TILE) {
-				if (!tc->ismaster && new_stack_inner_per != 1.0f &&
-					grabc->old_stack_inner_per != 1.0f)
-					tc->stack_inner_per = (1 - new_stack_inner_per) /
-										  (1 - grabc->old_stack_inner_per) *
-										  tc->stack_inner_per;
-				if (tc->ismaster && new_master_inner_per != 1.0f &&
-					grabc->old_master_inner_per != 1.0f)
-					tc->master_inner_per =
-						(1.0f - new_master_inner_per) /
-						(1.0f - grabc->old_master_inner_per) *
-						tc->master_inner_per;
+		if (!isdrag) {
+			moving_left = offsetx < 0 ? true : false;
+			moving_right = offsetx > 0 ? true : false;
+		} else {
+			moving_left = cursor->x < drag_begin_cursorx;
+			moving_right = cursor->x > drag_begin_cursorx;
+		}
+
+		if (grabc->ismaster && !prev) {
+			if (moving_left) {
+				delta_x = -fabsf(delta_x);
+			} else {
+				delta_x = fabsf(delta_x);
 			}
+		} else if (grabc->ismaster && next && !next->ismaster) {
+			if (moving_left) {
+				delta_x = fabsf(delta_x);
+			} else {
+				delta_x = -fabsf(delta_x);
+			}
+		} else if (!grabc->ismaster && prev && prev->ismaster) {
+			if (moving_left) {
+				delta_x = -fabsf(delta_x);
+			} else {
+				delta_x = fabsf(delta_x);
+			}
+		} else if (!grabc->ismaster && !next) {
+			if (moving_left) {
+				delta_x = fabsf(delta_x);
+			} else {
+				delta_x = -fabsf(delta_x);
+			}
+		} else if ((grabc->cursor_in_left_half && moving_left) ||
+				   (!grabc->cursor_in_left_half && moving_right)) {
+			delta_x = fabsf(delta_x);
+			delta_x = delta_x * 2;
+		} else {
+			delta_x = -fabsf(delta_x);
+			delta_x = delta_x * 2;
+		}
 
-			tc->master_mfact_per = new_master_mfact_per;
+		float new_master_mfact_per = grabc->old_master_mfact_per + delta_y;
+		float new_master_inner_per = grabc->old_master_inner_per + delta_x;
+		float new_stack_inner_per = grabc->old_stack_inner_per + delta_x;
+
+		new_master_mfact_per = fmaxf(0.1f, fminf(0.9f, new_master_mfact_per));
+		new_master_inner_per = fmaxf(0.1f, fminf(0.9f, new_master_inner_per));
+		new_stack_inner_per = fmaxf(0.1f, fminf(0.9f, new_stack_inner_per));
+
+		wl_list_for_each(tc, &clients, link) {
+			if (VISIBLEON(tc, grabc->mon) && ISTILED(tc)) {
+				if (!isdrag && tc != grabc && type != CENTER_TILE) {
+					if (!tc->ismaster && new_stack_inner_per != 1.0f &&
+						grabc->old_stack_inner_per != 1.0f)
+						tc->stack_inner_per = (1 - new_stack_inner_per) /
+											  (1 - grabc->old_stack_inner_per) *
+											  tc->stack_inner_per;
+					if (tc->ismaster && new_master_inner_per != 1.0f &&
+						grabc->old_master_inner_per != 1.0f)
+						tc->master_inner_per =
+							(1.0f - new_master_inner_per) /
+							(1.0f - grabc->old_master_inner_per) *
+							tc->master_inner_per;
+				}
+
+				tc->master_mfact_per = new_master_mfact_per;
+			}
+		}
+
+		grabc->master_inner_per = new_master_inner_per;
+		grabc->stack_inner_per = new_stack_inner_per;
+
+		if (!isdrag) {
+			arrange(grabc->mon, false, false);
+			return;
+		}
+
+		if (last_apply_drap_time == 0 ||
+			time - last_apply_drap_time > config.drag_tile_refresh_interval) {
+			arrange(grabc->mon, false, false);
+			last_apply_drap_time = time;
 		}
 	}
-
-	grabc->master_inner_per = new_master_inner_per;
-	grabc->stack_inner_per = new_stack_inner_per;
-
-	if (!isdrag) {
-		arrange(grabc->mon, false, false);
-		return;
-	}
-
-	if (last_apply_drap_time == 0 ||
-		time - last_apply_drap_time > config.drag_tile_refresh_interval) {
-		arrange(grabc->mon, false, false);
-		last_apply_drap_time = time;
-	}
-}
 }
 
 void resize_tile_scroller(Client *grabc, bool isdrag, int32_t offsetx,

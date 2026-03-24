@@ -464,7 +464,6 @@ struct ivec2 clip_to_hide(Client *c, struct wlr_box *clip_box) {
 
 	int32_t bw = (int32_t)c->bw;
 
-	/*
 	if (ISSCROLLTILED(c) || c->animation.tagining || c->animation.tagouted ||
 		c->animation.tagouting) {
 		if (left_out_offset > 0) {
@@ -708,6 +707,8 @@ void client_animation_next_tick(Client *c) {
 
 	c->is_pending_open_animation = false;
 
+	client_apply_clip(c, factor);
+
 	if (animation_passed >= 1.0) {
 
 		// clear the open action state
@@ -737,8 +738,6 @@ void client_animation_next_tick(Client *c) {
 		// end flush in next frame, not the current frame
 		c->need_output_flush = false;
 	}
-
-	client_apply_clip(c, factor);
 }
 
 void init_fadeout_client(Client *c) {
@@ -779,6 +778,7 @@ void init_fadeout_client(Client *c) {
 	fadeout_client->animation.action = CLOSE;
 	fadeout_client->bw = c->bw;
 	fadeout_client->nofadeout = c->nofadeout;
+
 
 	fadeout_client->animation.initial.x = 0;
 	fadeout_client->animation.initial.y = 0;
@@ -886,6 +886,7 @@ void client_set_pending_state(Client *c) {
 
 void resize(Client *c, struct wlr_box geo, int32_t interact) {
 
+
 	if (!c || !c->mon || !client_surface(c)->mapped)
 		return;
 
@@ -905,9 +906,11 @@ void resize(Client *c, struct wlr_box geo, int32_t interact) {
 		c->geom = geo;
 		c->geom.width = MAX(1 + 2 * (int32_t)c->bw, c->geom.width);
 		c->geom.height = MAX(1 + 2 * (int32_t)c->bw, c->geom.height);
+	} else {
 		c->geom = geo;
 		applybounds(
 			c,
+			bbox);
 	}
 
 	if (!c->isnosizehint && !c->ismaximizescreen && !c->isfullscreen &&
