@@ -4,15 +4,15 @@ fjordwl is a personal extra lightweight fork of the Mango Wayland Compositor. Th
 
 basically the idea of complie time based config.h & self contained configs + quickshell
 
-this mainly exist because i dont wanna start with pure dwl as base!
+this mainly exist because i dont wanna start with pure dwl as base
 
-Thank to https://github.com/Sqooky/Maomao-with-tablet-support.git for tablet support
+Thank to [Sqooky](https://github.com/Sqooky/Maomao-with-tablet-support.git) for tablet support
 
 # Quick build from source
 
 ```
 git clone https://github.com/SUDOER1337/fjordwl.git
-  cd mango
+  cd fjordwl
   meson build -Dprefix=/usr
   sudo ninja -C build install
 ```

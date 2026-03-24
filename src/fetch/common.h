@@ -1,3 +1,5 @@
+#include <ctype.h>
+
 pid_t getparentprocess(pid_t p) {
 	uint32_t v = 0;
 

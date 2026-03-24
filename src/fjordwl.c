@@ -9,7 +9,6 @@
 #include <limits.h>
 #include <linux/input-event-codes.h>
 #include <scenefx/render/fx_renderer/fx_renderer.h>
-#include <scenefx/types/fx/blur_data.h>
 #include <scenefx/types/fx/clipped_region.h>
 #include <scenefx/types/fx/corner_location.h>
 #include <scenefx/types/wlr_scene.h>
@@ -156,7 +155,6 @@ enum { XDGShell, LayerShell, X11 };					/* client types */
 enum { AxisUp, AxisDown, AxisLeft, AxisRight };		//
 enum {
 	LyrBg,
-	LyrBlur,
 	LyrBottom,
 	LyrTile,
 	LyrTop,
@@ -317,7 +315,6 @@ struct Client {
 	Monitor *mon;
 	struct wlr_scene_tree *scene;
 	struct wlr_scene_rect *border; /* top, bottom, left, right */
-	struct wlr_scene_shadow *shadow;
 	struct wlr_scene_tree *scene_surface;
 	struct wl_list link;
 	struct wl_list flink;
@@ -376,7 +373,6 @@ struct Client {
 	int32_t is_scratchpad_show;
 	int32_t isglobal;
 	int32_t isnoborder;
-	int32_t isnoshadow;
 	int32_t isnoradius;
 	int32_t isnoanimation;
 	int32_t isopensilent;
@@ -410,7 +406,6 @@ struct Client {
 	float focused_opacity;
 	float unfocused_opacity;
 	char oldmonname[128];
-	int32_t noblur;
 	double master_mfact_per, master_inner_per, stack_inner_per;
 	double old_master_mfact_per, old_master_inner_per, old_stack_inner_per;
 	double old_scroller_pproportion;
@@ -467,7 +462,6 @@ typedef struct {
 	Monitor *mon;
 	struct wlr_scene_tree *scene;
 	struct wlr_scene_tree *popups;
-	struct wlr_scene_shadow *shadow;
 	struct wlr_scene_layer_surface_v1 *scene_layer;
 	struct wl_list link;
 	struct wl_list fadeout_link;
@@ -481,9 +475,7 @@ typedef struct {
 
 	struct dwl_animation animation;
 	bool dirty;
-	int32_t noblur;
 	int32_t noanim;
-	int32_t noshadow;
 	char *animation_type_open;
 	char *animation_type_close;
 	bool need_output_flush;
@@ -539,7 +531,6 @@ struct Monitor {
 	uint32_t visible_clients;
 	uint32_t visible_tiling_clients;
 	uint32_t visible_scroll_tiling_clients;
-	struct wlr_scene_optimized_blur *blur;
 	char last_surface_ws_name[256];
 	struct wlr_ext_workspace_group_handle_v1 *ext_group;
 };
@@ -557,6 +548,8 @@ typedef struct {
 	struct wl_listener unlock;
 	struct wl_listener destroy;
 } SessionLock;
+
+#include "config/types.h"
 
 /* function declarations */
 static void applybounds(Client *c,
@@ -601,6 +594,9 @@ static void createmon(struct wl_listener *listener, void *data);
 static void createnotify(struct wl_listener *listener, void *data);
 static void createpointer(struct wlr_pointer *pointer);
 static void configure_pointer(struct libinput_device *device);
+static bool apply_rule_to_state(Monitor *m, const ConfigMonitorRule *rule,
+								struct wlr_output_state *state, int vrr,
+								int custom);
 static void destroyinputdevice(struct wl_listener *listener, void *data);
 static void createswitch(struct wlr_switch *switch_device);
 static void switch_toggle(struct wl_listener *listener, void *data);
@@ -671,6 +667,7 @@ static void requeststartdrag(struct wl_listener *listener, void *data);
 static void resize(Client *c, struct wlr_box geo, int32_t interact);
 static void run(char *startup_cmd);
 static void setcursor(struct wl_listener *listener, void *data);
+static void set_xcursor_env(void);
 static void setfloating(Client *c, int32_t floating);
 static void setfakefullscreen(Client *c, int32_t fakefullscreen);
 static void setfullscreen(Client *c, int32_t fullscreen);
@@ -717,6 +714,8 @@ static void set_minimized(Client *c);
 static void show_scratchpad(Client *c);
 static void show_hide_client(Client *c);
 static void tag_client(const Arg *arg, Client *target_client);
+static bool monitor_matches_rule(Monitor *m, const ConfigMonitorRule *rule);
+static void parse_tagrule(Monitor *m);
 
 static struct wlr_box setclient_coordinate_center(Client *c, Monitor *m,
 												  struct wlr_box geom,
@@ -811,6 +810,7 @@ static void pre_caculate_before_arrange(Monitor *m, bool want_animation,
 										bool from_view, bool only_caculate);
 #include "data/static_keymap.h"
 #include "dispatch/bind_declare.h"
+#include "config.h"
 #include "layout/layout.h"
 
 /* variables */
@@ -908,12 +908,12 @@ static struct wl_event_source *hide_cursor_source;
 static struct wl_event_source *keep_idle_inhibit_source;
 static bool cursor_hidden = false;
 static bool tag_combo = false;
-static const char *cli_config_path = NULL;
 static bool cli_debug_log = false;
 static KeyMode keymode = {
 	.mode = {'d', 'e', 'f', 'a', 'u', 'l', 't', '\0'},
 	.isdefault = true,
 };
+static Config config;
 
 static char *env_vars[] = {"DISPLAY",
 						   "WAYLAND_DISPLAY",
@@ -930,7 +930,7 @@ static struct {
 } last_cursor;
 
 #include "client/client.h"
-#include "config/preset.h"
+#include "config/init.h"
 
 struct Pertag {
 	uint32_t curtag, prevtag;			/* current and previous tag */
@@ -942,8 +942,6 @@ struct Pertag {
 	const Layout
 		*ltidxs[LENGTH(tags) + 1]; /* matrix of tags and layouts indexes  */
 };
-
-#include "config/parse_config.h"
 
 static struct wl_signal fjordwl_print_status;
 
@@ -1340,7 +1338,6 @@ static void apply_rule_properties(Client *c, const ConfigWinRule *r) {
 	APPLY_INT_PROP(c, r, isfullscreen);
 	APPLY_INT_PROP(c, r, isfakefullscreen);
 	APPLY_INT_PROP(c, r, isnoborder);
-	APPLY_INT_PROP(c, r, isnoshadow);
 	APPLY_INT_PROP(c, r, isnoradius);
 	APPLY_INT_PROP(c, r, isnoanimation);
 	APPLY_INT_PROP(c, r, isopensilent);
@@ -1353,7 +1350,6 @@ static void apply_rule_properties(Client *c, const ConfigWinRule *r) {
 	APPLY_INT_PROP(c, r, isnosizehint);
 	APPLY_INT_PROP(c, r, indleinhibit_when_focus);
 	APPLY_INT_PROP(c, r, isunglobal);
-	APPLY_INT_PROP(c, r, noblur);
 	APPLY_INT_PROP(c, r, allow_shortcuts_inhibit);
 
 	APPLY_FLOAT_PROP(c, r, scroller_proportion);
@@ -2325,10 +2321,6 @@ void cleanupmon(struct wl_listener *listener, void *data) {
 	wlr_scene_output_destroy(m->scene_output);
 
 	closemon(m);
-	if (m->blur) {
-		wlr_scene_node_destroy(&m->blur->node);
-		m->blur = NULL;
-	}
 	if (m->skip_frame_timeout) {
 		monitor_stop_skip_frame_timer(m);
 		wl_event_source_remove(m->skip_frame_timeout);
@@ -2376,36 +2368,6 @@ void closemon(Monitor *m) {
 	}
 }
 
-static void iter_layer_scene_buffers(struct wlr_scene_buffer *buffer,
-									 int32_t sx, int32_t sy, void *user_data) {
-	struct wlr_scene_surface *scene_surface =
-		wlr_scene_surface_try_from_buffer(buffer);
-	if (!scene_surface) {
-		return;
-	}
-
-	wlr_scene_buffer_set_backdrop_blur(buffer, true);
-	wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
-	if (config.blur_optimized) {
-		wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
-	} else {
-		wlr_scene_buffer_set_backdrop_blur_optimized(buffer, false);
-	}
-}
-
-void layer_flush_blur_background(LayerSurface *l) {
-	if (!config.blur)
-		return;
-
-	// ,
-	if (l->layer_surface->current.layer ==
-		ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
-		if (l->mon) {
-			wlr_scene_optimized_blur_mark_dirty(l->mon->blur);
-		}
-	}
-}
-
 void maplayersurfacenotify(struct wl_listener *listener, void *data) {
 	LayerSurface *l = wl_container_of(listener, l, map);
 	struct wlr_layer_surface_v1 *layer_surface = l->layer_surface;
@@ -2426,8 +2388,6 @@ void maplayersurfacenotify(struct wl_listener *listener, void *data) {
 
 	l->noanim = 0;
 	l->dirty = false;
-	l->noblur = 0;
-	l->shadow = NULL;
 	l->need_output_flush = true;
 
 	// layer
@@ -2438,23 +2398,10 @@ void maplayersurfacenotify(struct wl_listener *listener, void *data) {
 						l->layer_surface->namespace)) {
 
 			r = &config.layer_rules[ji];
-			APPLY_INT_PROP(l, r, noblur);
 			APPLY_INT_PROP(l, r, noanim);
-			APPLY_INT_PROP(l, r, noshadow);
 			APPLY_STRING_PROP(l, r, animation_type_open);
 			APPLY_STRING_PROP(l, r, animation_type_close);
 		}
-	}
-
-	//
-	if (layer_surface->current.exclusive_zone == 0 &&
-		layer_surface->current.layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM &&
-		layer_surface->current.layer != ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
-		l->shadow =
-			wlr_scene_shadow_create(l->scene, 0, 0, config.border_radius,
-									config.shadows_blur, config.shadowscolor);
-		wlr_scene_node_lower_to_bottom(&l->shadow->node);
-		wlr_scene_node_set_enabled(&l->shadow->node, true);
 	}
 
 	//
@@ -2520,20 +2467,6 @@ void commitlayersurfacenotify(struct wl_listener *listener, void *data) {
 		l->need_output_flush = true;
 		layer_set_pending_state(l);
 	}
-
-	if (config.blur && config.blur_layer) {
-
-		if (!l->noblur &&
-			layer_surface->current.layer != ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM &&
-			layer_surface->current.layer !=
-				ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
-
-			wlr_scene_node_for_each_buffer(&l->scene->node,
-										   iter_layer_scene_buffers, l);
-		}
-	}
-
-	layer_flush_blur_background(l);
 
 	if (layer_surface->current.committed == 0 &&
 		l->mapped == layer_surface->surface->mapped)
@@ -2847,6 +2780,76 @@ KeyboardGroup *createkeyboardgroup(void) {
 	return group;
 }
 
+static void parse_tagrule(Monitor *m) {
+	int32_t i, jk;
+	ConfigTagRule tr;
+	Client *c = NULL;
+	bool match_rule = false;
+
+	for (i = 0; i <= LENGTH(tags); i++) {
+		m->pertag->nmasters[i] = config.default_nmaster;
+		m->pertag->mfacts[i] = config.default_mfact;
+	}
+
+	for (i = 0; i < config.tag_rules_count; i++) {
+		tr = config.tag_rules[i];
+		match_rule = true;
+
+		if (tr.monitor_name != NULL &&
+			!regex_match(tr.monitor_name, m->wlr_output->name)) {
+			match_rule = false;
+		}
+
+		if (tr.monitor_make != NULL &&
+			(m->wlr_output->make == NULL ||
+			 strcmp(tr.monitor_make, m->wlr_output->make) != 0)) {
+			match_rule = false;
+		}
+
+		if (tr.monitor_model != NULL &&
+			(m->wlr_output->model == NULL ||
+			 strcmp(tr.monitor_model, m->wlr_output->model) != 0)) {
+			match_rule = false;
+		}
+
+		if (tr.monitor_serial != NULL &&
+			(m->wlr_output->serial == NULL ||
+			 strcmp(tr.monitor_serial, m->wlr_output->serial) != 0)) {
+			match_rule = false;
+		}
+
+		if (!match_rule)
+			continue;
+
+		for (jk = 0; jk < LENGTH(layouts); jk++) {
+			if (tr.layout_name &&
+				strcmp(layouts[jk].name, tr.layout_name) == 0) {
+				m->pertag->ltidxs[tr.id] = &layouts[jk];
+			}
+		}
+
+		if (tr.no_hide >= 0)
+			m->pertag->no_hide[tr.id] = tr.no_hide;
+		if (tr.nmaster >= 1)
+			m->pertag->nmasters[tr.id] = tr.nmaster;
+		if (tr.mfact > 0.0f)
+			m->pertag->mfacts[tr.id] = tr.mfact;
+		if (tr.no_render_border >= 0)
+			m->pertag->no_render_border[tr.id] = tr.no_render_border;
+		if (tr.open_as_floating >= 0)
+			m->pertag->open_as_floating[tr.id] = tr.open_as_floating;
+	}
+
+	for (i = 1; i <= LENGTH(tags); i++) {
+		wl_list_for_each(c, &clients, link) {
+			if ((c->tags & (1 << (i - 1)) & TAGMASK) && ISTILED(c) &&
+				m->pertag->mfacts[i] > 0.0f) {
+				c->master_mfact_per = m->pertag->mfacts[i];
+			}
+		}
+	}
+}
+
 void createlayersurface(struct wl_listener *listener, void *data) {
 	struct wlr_layer_surface_v1 *layer_surface = data;
 	LayerSurface *l = NULL;
@@ -2936,7 +2939,7 @@ void enable_adaptive_sync(Monitor *m, struct wlr_output_state *state) {
 	}
 }
 
-bool monitor_matches_rule(Monitor *m, const ConfigMonitorRule *rule) {
+static bool monitor_matches_rule(Monitor *m, const ConfigMonitorRule *rule) {
 	if (rule->name != NULL && !regex_match(rule->name, m->wlr_output->name))
 		return false;
 	if (rule->make != NULL && (m->wlr_output->make == NULL ||
@@ -2953,8 +2956,9 @@ bool monitor_matches_rule(Monitor *m, const ConfigMonitorRule *rule) {
 }
 
 /*  wlr_output_state ， */
-bool apply_rule_to_state(Monitor *m, const ConfigMonitorRule *rule,
-						 struct wlr_output_state *state, int vrr, int custom) {
+static bool apply_rule_to_state(Monitor *m, const ConfigMonitorRule *rule,
+								struct wlr_output_state *state, int vrr,
+								int custom) {
 	bool mode_set = false;
 	if (rule->width > 0 && rule->height > 0 && rule->refresh > 0) {
 		struct wlr_output_mode *internal_mode = get_nearest_output_mode(
@@ -3111,13 +3115,6 @@ void createmon(struct wl_listener *listener, void *data) {
 		wlr_output_layout_add_auto(output_layout, wlr_output);
 	else
 		wlr_output_layout_add(output_layout, wlr_output, m->m.x, m->m.y);
-
-	if (config.blur) {
-		m->blur = wlr_scene_optimized_blur_create(&scene->tree, 0, 0);
-		wlr_scene_node_set_position(&m->blur->node, m->m.x, m->m.y);
-		wlr_scene_node_reparent(&m->blur->node, layers[LyrBlur]);
-		wlr_scene_optimized_blur_set_size(m->blur, m->m.width, m->m.height);
-	}
 	m->ext_group = wlr_ext_workspace_group_handle_v1_create(
 		ext_manager, EXT_WORKSPACE_ENABLE_CAPS);
 	wlr_ext_workspace_group_handle_v1_output_enter(m->ext_group, m->wlr_output);
@@ -4005,21 +4002,8 @@ static void iter_xdg_scene_buffers(struct wlr_scene_buffer *buffer, int32_t sx,
 	}
 
 	struct wlr_surface *surface = scene_surface->surface;
-	/* we dont blur subsurfaces */
-	if (wlr_subsurface_try_from_wlr_surface(surface) != NULL)
-		return;
-
-	if (config.blur && c && !c->noblur) {
-		wlr_scene_buffer_set_backdrop_blur(buffer, true);
-		wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
-		if (config.blur_optimized) {
-			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
-		} else {
-			wlr_scene_buffer_set_backdrop_blur_optimized(buffer, false);
-		}
-	} else {
-		wlr_scene_buffer_set_backdrop_blur(buffer, false);
-	}
+	(void)c;
+	(void)surface;
 }
 
 void init_client_properties(Client *c) {
@@ -4031,7 +4015,6 @@ void init_client_properties(Client *c) {
 	c->istagsilent = 0;
 	c->noswallow = 0;
 	c->isterm = 0;
-	c->noblur = 0;
 	c->tearing_hint = 0;
 	c->overview_isfullscreenbak = 0;
 	c->overview_ismaximizescreenbak = 0;
@@ -4073,7 +4056,6 @@ void init_client_properties(Client *c) {
 	c->isnoborder = 0;
 	c->isnosizehint = 0;
 	c->isnoradius = 0;
-	c->isnoshadow = 0;
 	c->ignore_maximize = 1;
 	c->ignore_minimize = 1;
 	c->iscustomsize = 0;
@@ -4171,13 +4153,6 @@ mapnotify(struct wl_listener *listener, void *data) {
 	wlr_scene_rect_set_corner_radius(c->border, config.border_radius,
 									 config.border_radius_location_default);
 	wlr_scene_node_set_enabled(&c->border->node, true);
-
-	c->shadow =
-		wlr_scene_shadow_create(c->scene, 0, 0, config.border_radius,
-								config.shadows_blur, config.shadowscolor);
-
-	wlr_scene_node_lower_to_bottom(&c->shadow->node);
-	wlr_scene_node_set_enabled(&c->shadow->node, true);
 
 	if (config.new_is_master && selmon && !is_scroller_layout(selmon))
 		// tile at the top
@@ -4455,9 +4430,7 @@ void motionnotify(uint32_t time, struct wlr_input_device *device, double dx,
 			should_lock = true;
 		}
 
-		if (!(!config.edge_scroller_pointer_focus && c && c->mon &&
-			  is_scroller_layout(c->mon) && !INSIDEMON(c)))
-			pointerfocus(c, surface, sx, sy, time);
+		pointerfocus(c, surface, sx, sy, time);
 
 		if (should_lock && c && c->mon && ISTILED(c) && c == c->mon->sel) {
 			scroller_focus_lock = 1;
@@ -4933,7 +4906,7 @@ cleanup:
 void // 17
 run(char *startup_cmd) {
 
-	set_env();
+	apply_config_env();
 
 	/* Add a Unix socket to the Wayland display. */
 	const char *socket = wl_display_add_socket_auto(dpy);
@@ -4989,8 +4962,7 @@ run(char *startup_cmd) {
 
 	set_activation_env();
 
-	run_exec();
-	run_exec_once();
+	run_autostart_commands();
 
 	/* Run the Wayland event loop. This does not return until you exit the
 	 * compositor. Starting the backend rigged up all of the necessary event
@@ -5511,7 +5483,7 @@ void setup(void) {
 	setenv("XDG_CURRENT_DESKTOP", "fjordwl", 1);
 	setenv("_JAVA_AWT_WM_NONREPARENTING", "1", 1);
 
-	parse_config();
+	init_compiled_config();
 	if (cli_debug_log) {
 		config.log_level = WLR_DEBUG;
 	}
@@ -5777,11 +5749,6 @@ void setup(void) {
 	wl_signal_add(&output_mgr->events.apply, &output_mgr_apply);
 	wl_signal_add(&output_mgr->events.test, &output_mgr_test);
 
-	wlr_scene_set_blur_data(
-		scene, config.blur_params.num_passes, config.blur_params.radius,
-		config.blur_params.noise, config.blur_params.brightness,
-		config.blur_params.contrast, config.blur_params.saturation);
-
 	/* create text_input-, and input_method-protocol relevant globals */
 	input_method_manager = wlr_input_method_manager_v2_create(dpy);
 	text_input_manager = wlr_text_input_manager_v3_create(dpy);
@@ -6024,9 +5991,6 @@ void unmaplayersurfacenotify(struct wl_listener *listener, void *data) {
 	reset_exclusive_layers_focus(l->mon);
 
 	motionnotify(0, NULL, 0, 0, 0, 0);
-	layer_flush_blur_background(l);
-	wlr_scene_node_destroy(&l->shadow->node);
-	l->shadow = NULL;
 	l->being_unmapped = false;
 }
 
@@ -6214,11 +6178,6 @@ void updatemons(struct wl_listener *listener, void *data) {
 		 Otherwise, incorrect floating window calculations will occur here.
 		 */
 		wlr_scene_output_set_position(m->scene_output, m->m.x, m->m.y);
-
-		if (config.blur && m->blur) {
-			wlr_scene_node_set_position(&m->blur->node, m->m.x, m->m.y);
-			wlr_scene_optimized_blur_set_size(m->blur, m->m.width, m->m.height);
-		}
 
 		if (m->lock_surface) {
 			struct wlr_scene_tree *scene_tree = m->lock_surface->surface->data;
@@ -6655,7 +6614,7 @@ int32_t main(int32_t argc, char *argv[]) {
 	char *startup_cmd = NULL;
 	int32_t c;
 
-	while ((c = getopt(argc, argv, "s:c:hdvp")) != -1) {
+	while ((c = getopt(argc, argv, "s:hdv")) != -1) {
 		if (c == 's') {
 			startup_cmd = optarg;
 		} else if (c == 'd') {
@@ -6663,10 +6622,6 @@ int32_t main(int32_t argc, char *argv[]) {
 		} else if (c == 'v') {
 			printf("fjordwl " VERSION "\n");
 			return EXIT_SUCCESS;
-		} else if (c == 'c') {
-			cli_config_path = optarg;
-		} else if (c == 'p') {
-			return parse_config() ? EXIT_SUCCESS : EXIT_FAILURE;
 		} else {
 			goto usage;
 		}
@@ -6689,8 +6644,6 @@ usage:
 		   "Options:\n"
 		   "  -v             Show fjordwl version\n"
 		   "  -d             Enable debug log\n"
-		   "  -c <file>      Use custom configuration file\n"
-		   "  -s <command>   Execute startup command\n"
-		   "  -p             Check configuration file error\n");
+		   "  -s <command>   Execute startup command\n");
 	return EXIT_SUCCESS;
 }

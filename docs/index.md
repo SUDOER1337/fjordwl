@@ -14,7 +14,7 @@ Beyond basic window management, fjordwl provides a rich set of features designed
 
 - **[Animations](/docs/visuals/animations)** — Smooth, customizable animations for opening, moving, closing windows and tag switching.
 - **[Layouts](/docs/window-management/layouts)** — Supports Scroller, Master-Stack, Monocle, Grid, Deck, and more, with per-tag layouts.
-- **[Visual Effects](/docs/visuals/effects)** — Built-in blur, shadows, corner radius, and opacity effects powered by scenefx.
+- **[Visual Effects](/docs/visuals/effects)** — Built-in corner radius and opacity effects powered by scenefx.
 - **[IPC & Scripting](/docs/ipc)** — Control the compositor externally with robust IPC support for custom scripts and widgets.
 
 ## Additional Features
@@ -23,7 +23,7 @@ Beyond basic window management, fjordwl provides a rich set of features designed
 - **Tag System** — Uses tags instead of workspaces, allowing separate window layouts for each tag.
 - **Input Methods** — Great support for text input v2/v3 (Fcitx5, IBus).
 - **Window States** — Rich states including swallow, minimize, maximize, fullscreen, and overlay.
-- **Hot-Reload Config** — Simple external configuration that supports hot-reloading without restarting.
+- **Compile-Time Config** — A `dwl`/`dwm`-style `config.h` keeps configuration self-contained and build-time.
 - **Scratchpads** — Support for both Sway-like and named scratchpads.
 
 ## Community

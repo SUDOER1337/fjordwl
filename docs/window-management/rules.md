@@ -53,16 +53,14 @@ windowrule=Parameter:Values,Parameter:Values,appid:Values,title:Values
 
 | Parameter | Type | Values | Description |
 | :--- | :--- | :--- | :--- |
-| `noblur` | integer | `0` / `1` | Window does not have blur effect |
 | `isnoborder` | integer | `0` / `1` | Remove window border |
-| `isnoshadow` | integer | `0` / `1` | Not apply shadow |
 | `isnoradius` | integer | `0` / `1` | Not apply corner radius |
 | `isnoanimation` | integer | `0` / `1` | Not apply animation |
 | `focused_opacity` | integer | `0` / `1` | Window focused opacity |
 | `unfocused_opacity` | integer | `0` / `1` | Window unfocused opacity |
 | `allow_csd` | integer | `0` / `1` | Allow client side decoration |
 
-> **Tip:** For detailed visual effects configuration, see the [Window Effects](/docs/visuals/effects) page for blur, shadows, and opacity settings.
+> **Tip:** For detailed visual effects configuration, see the [Window Effects](/docs/visuals/effects) page for corner radius and opacity settings.
 
 ### Layout & Scroller
 
@@ -128,9 +126,6 @@ windowrule=isnamedscratchpad:1,width:1280,height:800,appid:st-yazi
 # Custom opacity for specific apps
 windowrule=focused_opacity:0.8,appid:firefox
 windowrule=unfocused_opacity:0.6,appid:foot
-
-# Disable blur for selection tools
-windowrule=noblur:1,appid:slurp
 
 # Position windows relative to screen center
 windowrule=offsetx:20,offsety:-30,width:800,height:600,appid:alacritty
@@ -226,24 +221,19 @@ layerrule=layer_name:Values,Parameter:Values,Parameter:Values
 | `layer_name` | string | layer name | Match name of layer, supports regex |
 | `animation_type_open` | string | slide, zoom, fade, none | Set open animation |
 | `animation_type_close` | string | slide, zoom, fade, none | Set close animation |
-| `noblur` | integer | `0` / `1` | Disable blur |
 | `noanim` | integer | `0` / `1` | Disable layer animation |
-| `noshadow` | integer | `0` / `1` | Disable layer shadow |
 
 > **Tip:** For animation types, see [Animations](/docs/visuals/animations#animation-types). For visual effects, see [Window Effects](/docs/visuals/effects).
 
 ### Examples
 
 ```ini
-# No blur or animation for slurp selection layer (avoids occlusion and ghosting in screenshots)
-layerrule=noanim:1,noblur:1,layer_name:selection
+# Disable animation for the slurp selection layer
+layerrule=noanim:1,layer_name:selection
 
 # Zoom animation for Rofi with multiple parameters
 layerrule=animation_type_open:zoom,noanim:0,layer_name:rofi
 
-# Disable animations and shadows for notification daemon
-layerrule=noanim:1,noshadow:1,layer_name:swaync
-
-# Multiple effects for launcher
-layerrule=animation_type_open:slide,animation_type_close:fade,noblur:1,layer_name:wofi
+# Slide/fade combination for launcher
+layerrule=animation_type_open:slide,animation_type_close:fade,layer_name:wofi
 ```

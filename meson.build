@@ -86,6 +86,7 @@ executable('fjordwl',
   'src/common/util.c',
   'src/ext-protocol/wlr_ext_workspace_v1.c',
   wayland_sources,
+  include_directories : include_directories('.'),
   dependencies : [
     libm,
     xcb,
@@ -136,4 +137,3 @@ desktop_install_dir = join_paths(prefix, 'share/wayland-sessions')
 portal_install_dir = join_paths(prefix, 'share/xdg-desktop-portal')
 install_data('assets/fjordwl.desktop', install_dir : desktop_install_dir)
 install_data('assets/fjordwl-portals.conf', install_dir : portal_install_dir)
-install_data('assets/config.conf', install_dir : join_paths(sysconfdir, 'fjordwl'))

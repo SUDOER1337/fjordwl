@@ -7,20 +7,21 @@ Now that you have fjordwl installed, let's get your environment set up.
 
 ## Initial Setup
 
-1. **Create Configuration Directory**
+1. **Edit `config.h`**
 
-   fjordwl looks for configuration files in `~/.config/fjordwl/`.
+   fjordwl now uses a compile-time `config.h` at the project root, in the same style as `dwl`/`dwm`.
 
    ```bash
-   mkdir -p ~/.config/fjordwl
+   $EDITOR config.h
    ```
 
-2. **Copy Default Config**
+2. **Build fjordwl**
 
-   A default configuration file is provided at `/etc/fjordwl/config.conf`. Copy it to your local directory to start customizing.
+   Rebuild after changing the config.
 
    ```bash
-   cp /etc/fjordwl/config.conf ~/.config/fjordwl/config.conf
+   meson setup build
+   ninja -C build
    ```
 
 3. **Launch fjordwl**
@@ -29,12 +30,6 @@ Now that you have fjordwl installed, let's get your environment set up.
 
    ```bash
    fjordwl
-   ```
-
-   Optional: To specify a custom config file path:
-
-   ```bash
-   fjordwl -c /path/to/your/config.conf
    ```
 
 ## Essential Keybindings
@@ -52,7 +47,7 @@ fjordwl uses the following keybinds by default:
 | `Ctrl` + `1-9` | Switch to Tag 1-9 |
 | `Alt` + `1-9` | Move window to Tag 1-9 |
 
-> **Warning:** Some default bindings rely on specific tools like `foot` (terminal) and `rofi` (launcher). Ensure you have them installed or update your `config.conf` to use your preferred alternatives.
+> **Warning:** Some default bindings rely on specific tools like `kitty`, `rofi`, `playerctl`, `wpctl`, and `flameshot`. Update `config.h` if you prefer different tools.
 
 ## Recommended Tools
 

@@ -127,7 +127,7 @@ Use `mmsg -g -k` to query the current keyboard layout at any time.
 
 ## Input Method Editor (IME)
 
-To use Fcitx5 or IBus, set these environment variables in your config file.
+To use Fcitx5 or IBus, set these environment variables in `config.h`.
 
 > **Info:** These settings require a restart of the window manager to take effect.
 

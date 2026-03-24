@@ -206,7 +206,7 @@ yay -S xorg-xrdb
 yay -S xwayland-satellite
 ```
 
-**In config file:**
+**In `config.h`:**
 
 ```ini
 env=QT_AUTO_SCREEN_SCALE_FACTOR,1
@@ -239,7 +239,7 @@ If you use fractional scaling, you can use `xwayland-satellite` to automatically
 yay -S xwayland-satellite
 ```
 
-**In config file:**
+**In `config.h`:**
 
 ```ini
 env=DISPLAY,:2

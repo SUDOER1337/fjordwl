@@ -858,11 +858,19 @@ int32_t spawn_shell(const Arg *arg) {
 }
 
 int32_t spawn(const Arg *arg) {
-
 	if (!arg->v)
 		return 0;
 
 	if (fork() == 0) {
+		char *cmd = NULL;
+		char *argv[64];
+		wordexp_t expanded[64];
+		bool expanded_ok[64] = {false};
+		char *token = NULL;
+		char *saveptr = NULL;
+		int32_t argc = 0;
+		int32_t i = 0;
+
 		signal(SIGSEGV, SIG_IGN);
 		signal(SIGABRT, SIG_IGN);
 		signal(SIGILL, SIG_IGN);
@@ -870,17 +878,21 @@ int32_t spawn(const Arg *arg) {
 		dup2(STDERR_FILENO, STDOUT_FILENO);
 		setsid();
 
-		char *argv[64];
-		int32_t argc = 0;
-		char *token = strtok((char *)arg->v, " ");
+		cmd = strdup(arg->v);
+		if (!cmd) {
+			_exit(EXIT_FAILURE);
+		}
+
+		token = strtok_r(cmd, " ", &saveptr);
 		while (token != NULL && argc < 63) {
-			wordexp_t p;
-			if (wordexp(token, &p, 0) == 0) {
-				argv[argc++] = p.we_wordv[0];
+			int32_t idx = argc;
+			if (wordexp(token, &expanded[idx], 0) == 0) {
+				expanded_ok[idx] = true;
+				argv[argc++] = expanded[idx].we_wordv[0];
 			} else {
 				argv[argc++] = token;
 			}
-			token = strtok(NULL, " ");
+			token = strtok_r(NULL, " ", &saveptr);
 		}
 		argv[argc] = NULL;
 
@@ -888,6 +900,13 @@ int32_t spawn(const Arg *arg) {
 
 		wlr_log(WLR_DEBUG, "fjordwl: execvp '%s' failed: %s\n", argv[0],
 				strerror(errno));
+		for (i = 0; i < argc; i++) {
+			if (expanded_ok[i]) {
+				wordfree(&expanded[i]);
+			}
+		}
+		free(cmd);
+		_exit(EXIT_FAILURE);
 	}
 	return 0;
 }
@@ -1613,13 +1632,6 @@ int32_t zoom(const Arg *arg) {
 
 	focusclient(sel, 1);
 	arrange(selmon, false, false);
-	return 0;
-}
-
-int32_t setoption(const Arg *arg) {
-	parse_option(&config, arg->v, arg->v2);
-	override_config();
-	reset_option();
 	return 0;
 }
 

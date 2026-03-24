@@ -5,6 +5,8 @@ description: Define keyboard shortcuts and modes.
 
 ## Syntax
 
+> **Note:** fjordwl now stores bindings in `config.h` as C initializers. The dispatcher names and arguments below still describe the available commands.
+
 Key bindings follow this format:
 
 ```ini
@@ -54,10 +56,6 @@ You can divide key bindings into named modes. Rules:
 Use `setkeymode` to switch modes, and `mmsg -b` to query the current mode.
 
 ```ini
-# Binds in 'common' apply in every mode
-keymode=common
-bind=SUPER,r,reload_config
-
 # Default mode bindings
 keymode=default
 bind=ALT,Return,spawn,foot
@@ -154,7 +152,6 @@ bindr=Super,Super_L,spawn,rofi -show run
 | `spawn` | `cmd` | Execute a command. |
 | `spawn_shell` | `cmd` | Execute shell command (supports pipes `\|`). |
 | `spawn_on_empty` | `cmd,tagnumber` | Open command on empty tag. |
-| `reload_config` | - | Hot-reload configuration. |
 | `quit` | - | Exit fjordwl. |
 | `toggleoverview` | - | Toggle overview mode. |
 | `create_virtual_output` | - | Create a headless monitor (for VNC/Sunshine). |
@@ -163,7 +160,6 @@ bindr=Super,Super_L,spawn,rofi -show run
 | `toggle_trackpad_enable` | - | Toggle trackpad enable. |
 | `setkeymode` | `mode` | Set keymode. |
 | `switch_keyboard_layout` | `[index]` | Switch keyboard layout. Optional index (0, 1, 2...) to switch to specific layout. |
-| `setoption` | `key,value` | Set config option temporarily. |
 | `disable_monitor` | `monitor_spec` | Shutdown monitor. Accepts a [monitor spec](/docs/configuration/monitors#monitor-spec-format). |
 | `enable_monitor` | `monitor_spec` | Power on monitor. Accepts a [monitor spec](/docs/configuration/monitors#monitor-spec-format). |
 | `toggle_monitor` | `monitor_spec` | Toggle monitor power. Accepts a [monitor spec](/docs/configuration/monitors#monitor-spec-format). |
