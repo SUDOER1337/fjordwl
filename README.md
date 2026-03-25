@@ -22,6 +22,10 @@ For the full dependency list and manual `wlroots` / `scenefx` setup, see [Instal
 
 ```sh
 git clone https://github.com/SUDOER1337/fjordwl.git
+cd fjordwl
+meson setup build -Dprefix=/usr
+meson compile -C build
+sudo meson install -C build
 ```
 
 ## First Run
