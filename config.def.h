@@ -587,7 +587,7 @@ static double   axis_scroll_factor = 1.0;
 static int32_t border_radius                  = 0;
 static int32_t border_radius_location_default = CORNER_LOCATION_ALL;
 
-static int32_t  smartgaps               = 1;
+static int32_t  smartgaps               = 0;
 static uint32_t gappih                  = 2;
 static uint32_t gappiv                  = 2;
 static uint32_t gappoh                  = 10;
